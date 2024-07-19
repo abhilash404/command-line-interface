@@ -1,13 +1,20 @@
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct List {
     pub name: String,
     pub items: Vec<Item>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct Item {
     pub description: String,
-    pub completed: bool,
+    pub status: ItemStatus,
+}
+
+#[derive(Serialize, Deserialize, Clone, PartialEq)]
+pub enum ItemStatus {
+    Incomplete,
+    Working,
+    Completed,
 }

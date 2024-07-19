@@ -6,10 +6,12 @@ mod models;
 
 use clap::Parser;
 use cli::Cli;
+use commands::execute_command;
 
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
+fn main() {
     let cli = Cli::parse();
-    commands::execute_command(cli.command)?;
-    Ok(())
+    if let Err(e) = execute_command(cli.command) {
+        eprintln!("Error: {}", e);
+        std::process::exit(1);
+    }
 }

@@ -1,21 +1,22 @@
 use clap::{Parser, Subcommand};
 
 #[derive(Parser)]
-#[clap(author, version, about, long_about = None)]
+#[command(author, version, about, long_about = None)]
 pub struct Cli {
-    #[clap(subcommand)]
+    #[command(subcommand)]
     pub command: Command,
 }
 
 #[derive(Subcommand)]
 pub enum Command {
     Show {
-        #[clap(long)]
+        #[arg(short, long)]
         all: bool,
-        #[clap(long)]
+        #[arg(short, long)]
         completed: bool,
-        #[clap(long)]
+        #[arg(short, long)]
         incomplete: bool,
+        #[arg(short, long)]
         list_name: Option<String>,
     },
     Add {
@@ -26,12 +27,16 @@ pub enum Command {
         list_name: String,
         item_number: usize,
     },
+    Working {
+        list_name: String,
+        item_number: usize,
+    },
     Incomplete {
         list_name: String,
         item_number: usize,
     },
     Remove {
-        list_name: Option<String>,
-        item_number: Option<usize>,
+        list_name: String,
+        item_number: usize,
     },
 }

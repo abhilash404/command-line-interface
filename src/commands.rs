@@ -1,6 +1,6 @@
 use crate::cli::Command;
 use crate::db::Database;
-use crate::models::Item;
+use crate::models::{Item, ItemStatus};
 use crate::error::TodoResult;
 
 pub fn execute_command(command: Command) -> TodoResult<()> {
@@ -15,6 +15,9 @@ pub fn execute_command(command: Command) -> TodoResult<()> {
         }
         Command::Complete { list_name, item_number } => {
             complete_task(&mut db, &list_name, item_number)?;
+        }
+        Command::Working { list_name, item_number } => {
+            working_task(&mut db, &list_name, item_number)?;
         }
         Command::Incomplete { list_name, item_number } => {
             incomplete_task(&mut db, &list_name, item_number)?;
@@ -44,9 +47,14 @@ fn show_tasks(
         println!("List: {}", list.name);
         for (i, item) in list.items.iter().enumerate() {
             if (all || (!completed && !incomplete)) ||
-               (completed && item.completed) ||
-               (incomplete && !item.completed) {
-                println!("  {}. [{}] {}", i + 1, if item.completed { "x" } else { " " }, item.description);
+               (completed && item.status == ItemStatus::Completed) ||
+               (incomplete && item.status != ItemStatus::Completed) {
+                let status_symbol = match item.status {
+                    ItemStatus::Incomplete => " ",
+                    ItemStatus::Working => "-",
+                    ItemStatus::Completed => "x",
+                };
+                println!("  {}. [{}] {}", i + 1, status_symbol, item.description);
             }
         }
         println!();
@@ -59,7 +67,7 @@ fn add_task(db: &mut Database, list_name: &str, item_description: &str) -> TodoR
     db.create_list(list_name)?;
     let item = Item {
         description: item_description.to_string(),
-        completed: false,
+        status: ItemStatus::Incomplete,
     };
     db.add_item(list_name, item)?;
     println!("Task added to list '{}'", list_name);
@@ -67,36 +75,25 @@ fn add_task(db: &mut Database, list_name: &str, item_description: &str) -> TodoR
 }
 
 fn complete_task(db: &mut Database, list_name: &str, item_number: usize) -> TodoResult<()> {
-    db.update_item_status(list_name, item_number, true)?;
-    println!("Task {} in list '{}' marked as completed", item_number, list_name);
+    db.update_item_status(list_name, item_number, ItemStatus::Completed)?;
+    println!("Task marked as completed in list '{}'", list_name);
+    Ok(())
+}
+
+fn working_task(db: &mut Database, list_name: &str, item_number: usize) -> TodoResult<()> {
+    db.update_item_status(list_name, item_number, ItemStatus::Working)?;
+    println!("Task marked as in progress in list '{}'", list_name);
     Ok(())
 }
 
 fn incomplete_task(db: &mut Database, list_name: &str, item_number: usize) -> TodoResult<()> {
-    db.update_item_status(list_name, item_number, false)?;
-    println!("Task {} in list '{}' marked as incomplete", item_number, list_name);
+    db.update_item_status(list_name, item_number, ItemStatus::Incomplete)?;
+    println!("Task marked as incomplete in list '{}'", list_name);
     Ok(())
 }
 
-fn remove_task(
-    db: &mut Database,
-    list_name: Option<String>,
-    item_number: Option<usize>,
-) -> TodoResult<()> {
-    match (list_name, item_number) {
-        (Some(list), Some(item)) => {
-            db.remove_item(&list, item)?;
-            println!("Task {} removed from list '{}'", item, list);
-        }
-        (Some(list), None) => {
-            db.remove_list(&list)?;
-            println!("List '{}' removed", list);
-        }
-        (None, None) => {
-            db.remove_all_lists()?;
-            println!("All lists removed");
-        }
-        _ => println!("Invalid combination of arguments"),
-    }
+fn remove_task(db: &mut Database, list_name: String, item_number: usize) -> TodoResult<()> {
+    db.remove_item(&list_name, item_number)?;
+    println!("Task removed from list '{}'", list_name);
     Ok(())
 }

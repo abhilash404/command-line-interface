@@ -1,29 +1,29 @@
-use std::fs;
-use std::path::PathBuf;
-use serde_json;
-use crate::models::{List, Item};
 use crate::error::{TodoError, TodoResult};
+use crate::models::{Item, ItemStatus, List};
+use serde_json;
+use std::fs;
+use std::path::Path;
 
 pub struct Database {
-    file_path: PathBuf,
     lists: Vec<List>,
+    file_path: String,
 }
 
 impl Database {
     pub fn new() -> TodoResult<Self> {
-        let file_path = PathBuf::from("todo_lists.json");
-        let lists = if file_path.exists() {
-            let content = fs::read_to_string(&file_path)?;
-            serde_json::from_str(&content)?
+        let file_path = "todo.json".to_string();
+        let lists = if Path::new(&file_path).exists() {
+            let data = fs::read_to_string(&file_path)?;
+            serde_json::from_str(&data)?
         } else {
             Vec::new()
         };
-        Ok(Self { file_path, lists })
+        Ok(Database { lists, file_path })
     }
 
     fn save(&self) -> TodoResult<()> {
-        let content = serde_json::to_string_pretty(&self.lists)?;
-        fs::write(&self.file_path, content)?;
+        let data = serde_json::to_string(&self.lists)?;
+        fs::write(&self.file_path, data)?;
         Ok(())
     }
 
@@ -32,7 +32,8 @@ impl Database {
     }
 
     pub fn get_list(&self, name: &str) -> TodoResult<List> {
-        self.lists.iter()
+        self.lists
+            .iter()
             .find(|list| list.name == name)
             .cloned()
             .ok_or_else(|| TodoError::ListNotFound(name.to_string()))
@@ -58,7 +59,7 @@ impl Database {
         Ok(())
     }
 
-    pub fn update_item_status(&mut self, list_name: &str, item_number: usize, completed: bool) -> TodoResult<()> {
+    pub fn update_item_status(&mut self, list_name: &str, item_number: usize, status: ItemStatus) -> TodoResult<()> {
         let list = self.lists.iter_mut()
             .find(|list| list.name == list_name)
             .ok_or_else(|| TodoError::ListNotFound(list_name.to_string()))?;
@@ -67,7 +68,7 @@ impl Database {
             return Err(TodoError::ItemNotFound(format!("Item {} in list '{}'", item_number, list_name)));
         }
 
-        list.items[item_number - 1].completed = completed;
+        list.items[item_number - 1].status = status;
         self.save()?;
         Ok(())
     }
@@ -82,18 +83,6 @@ impl Database {
         }
 
         list.items.remove(item_number - 1);
-        self.save()?;
-        Ok(())
-    }
-
-    pub fn remove_list(&mut self, list_name: &str) -> TodoResult<()> {
-        self.lists.retain(|list| list.name != list_name);
-        self.save()?;
-        Ok(())
-    }
-
-    pub fn remove_all_lists(&mut self) -> TodoResult<()> {
-        self.lists.clear();
         self.save()?;
         Ok(())
     }
